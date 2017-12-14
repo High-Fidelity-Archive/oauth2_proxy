@@ -187,13 +187,17 @@ func getAdminService(adminEmail string, credentialsReader io.Reader) *admin.Serv
 }
 
 func userInGroup(service *admin.Service, groups []string, email string) bool {
+
+	id := ""
+	custID := ""
+
 	user, err := fetchUser(service, email)
 	if err != nil {
 		log.Printf("error fetching user: %v", err)
-		return false
+	} else {
+		id = user.Id
+		custID = user.CustomerId
 	}
-	id := user.Id
-	custID := user.CustomerId
 
 	for _, group := range groups {
 		members, err := fetchGroupMembers(service, group)
@@ -207,15 +211,19 @@ func userInGroup(service *admin.Service, groups []string, email string) bool {
 		}
 
 		for _, member := range members {
-			switch member.Type {
-			case "CUSTOMER":
-				if member.Id == custID {
-					return true
+			if id != "" || custID != "" {
+				switch member.Type {
+				case "CUSTOMER":
+					if member.Id == custID {
+						return true
+					}
+				case "USER":
+					if member.Id == id {
+						return true
+					}
 				}
-			case "USER":
-				if member.Id == id {
-					return true
-				}
+			} else if member.Email == email {
+				return true
 			}
 		}
 	}
